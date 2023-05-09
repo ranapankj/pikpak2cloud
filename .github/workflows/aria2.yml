@@ -42,7 +42,7 @@ jobs:
         env:
           RCLONE_CONF: ${{ secrets.RCLONE_ALIYUN_CONF }}
         with:
-          args: copy ${{ steps.downloading.outputs.path }} aliyun:${{ github.event.inputs.Folder}}
+          args: copy ${{ steps.downloading.outputs.path }} zhou1:${{ github.event.inputs.Folder}}
         
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v1.2.3
