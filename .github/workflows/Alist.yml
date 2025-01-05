@@ -1,0 +1,66 @@
+name: 0上传至Alist
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: '下载路径'
+        required: true
+        default: 'Onedriver'
+
+jobs:
+  Onedriver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: 增加可用空间 (删除dotnet, android、haskell、CodeQL)
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+
+      - name: Aria2 Install
+        run: |
+            sudo apt update
+            sudo apt install -y aria2 nodejs curl
+
+      - name: 生成Alist的配置文件
+        id: create-json
+        uses: jsdaniell/create-json@v1.2.2
+        with:
+          name: "config.json"
+          json: ${{ secrets.ALIST_CONFIG }}
+          
+      - name: 运行Alist
+        run: |
+          curl -L -o alist.tar.gz https://github.com/alist-org/alist/releases/download/v3.30.0/alist-linux-amd64.tar.gz
+          tar -xzf alist.tar.gz
+          mkdir data
+          mv config.json data/config.json
+          nohup ./alist server > nohupcmd.out 2>&1 &
+          ls ${{github.workspace}}/data
+        env:
+          ALIST_ADMIN_PASSWORD: admin
+
+      - name: 等Alist运行起来(大概2分钟)
+        run: sleep 120s
+        shell: bash
+          
+      - name: 'Download file'
+        run: |
+          aria2c --conf $GITHUB_WORKSPACE/aria2.conf --seed-time=0 -d downloads -c 'https://ipfs.4everland.io/ipfs/QmULDFRSM8MYk8fr6e48UHbgKdTbR1RxrvA57x24d5j5yA/Lollipop.mp3' -o 'Lollipop.mp3' 
+
+      - name: 上传到Alist
+        run: |
+          curl -v -u 'admin:admin' -T 'downloads/Lollipop.mp3' http://localhost:5244/dav/hefamily/files/Lollipop.mp3
+          
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v1.2.3
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
