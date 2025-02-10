@@ -1,4 +1,4 @@
-name: 使用dev镜像测试功能
+name: Aria2下载直链加密转存tmp.link
 on:
   repository_dispatch:
   workflow_dispatch:
@@ -13,22 +13,24 @@ on:
         default: 'encrypt_folder'
 
 jobs:
-  Dev:
+  Aria2-Aliyun:
     runs-on: ubuntu-latest
     services:
       aliyun:
-        image: messense/aliyundrive-webdav
+        image: ykxvk8yl5l/tmp-link-webdav
         env:
-          REFRESH_TOKEN: '${{ secrets.ALIYUN_REFRESH_TOKEN }}'
+          TMP_LINK_TOKEN: '${{ secrets.TMP_TOKEN }}'
+          PORT: 8080
       alist:
         image: ykxvk8yl5l/alist-encrypt:dev
         env:
           DAV_PASSWORD: '123456'
           DAV_ENCNAME: true
+          DAV_ENCPATH: '/*'
     steps:
       - uses: actions/checkout@v2
       - name: Aria2 Install
-        run:  sudo apt-get install -y aria2 
+        run: sudo apt install -y aria2 
       - name: Downloading
         id: downloading
         run: |
@@ -36,16 +38,13 @@ jobs:
           filename=${url##*##}
           downloadurl=${url%##*}
           echo "::set-output name=path::downloads/$filename"
-          echo "::set-output name=filename::$filename"
           aria2c --conf $GITHUB_WORKSPACE/aria2.conf --seed-time=0 -d downloads -c $downloadurl -o $filename
-          dfilename=$(ls downloads | head -n1)
-          echo "::set-output name=dfilename::$dfilename"
           
       - name: upload
         uses: thinkdolabs/curl@v1
-        if: steps.downloading.outputs.dfilename != '' && !cancelled() && !failure()
+        if: steps.downloading.outputs.path != '' && !cancelled() && !failure()
         with:
-          args: --upload-file ${{ steps.downloading.outputs.path }} http://alist:5344/encrypt_folder/${{ steps.downloading.outputs.filename }}
+          args: --upload-file ${{ steps.downloading.outputs.path }} http://alist:5344/${{ steps.downloading.outputs.filename }} 
         
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v1.2.3
